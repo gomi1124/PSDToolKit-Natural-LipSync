@@ -1,0 +1,121 @@
+{
+  "locale": "ja",
+  "meta": {
+    "id": "gomi1124.psdtoolkit-aviutl1-lipsync",
+    "legacyId": "gomi1124.psdtoolkit-aviutl1-lipsync",
+    "packageType": "script",
+    "packageRole": "primaryPackage",
+    "addedAt": "2026-08-03",
+    "packagePageUrl": "https://github.com/gomi1124/PSDToolKit-AviUtl1-LipSync"
+  },
+  "content": {
+    "ja": {
+      "name": "PSDToolKit AviUtl1 LipSync",
+      "author": "ただのごみ",
+      "tags": [
+        "PSD",
+        "口パク",
+        "音声"
+      ],
+      "description": {
+        "summary": "PSDToolKit2でAviUtl1風の口パクを再現",
+        "markdownSource": "https://raw.githubusercontent.com/gomi1124/PSDToolKit-AviUtl1-LipSync/main/README.md"
+      },
+      "changelog": {
+        "markdownSource": "https://raw.githubusercontent.com/gomi1124/PSDToolKit-AviUtl1-LipSync/main/CHANGELOG.md"
+      },
+      "licenses": [
+        {
+          "type": "MIT",
+          "copyrights": [
+            {
+              "years": "2026",
+              "holder": "gomi1124"
+            }
+          ]
+        }
+      ],
+      "images": {
+        "thumbnail": "https://raw.githubusercontent.com/gomi1124/PSDToolKit-AviUtl1-LipSync/main/catalog/images/thumbnail.png",
+        "detailImages": [
+          "https://raw.githubusercontent.com/gomi1124/PSDToolKit-AviUtl1-LipSync/main/catalog/images/detail.png"
+        ]
+      }
+    }
+  },
+  "install": {
+    "relations": {
+      "requires": [
+        "oov.PSDToolKit2"
+      ]
+    },
+    "installation": {
+      "source": {
+        "type": "githubRelease",
+        "owner": "gomi1124",
+        "repo": "PSDToolKit-AviUtl1-LipSync",
+        "pattern": "^PSDToolKit_AviUtl1LipSync_v.*\\.au2pkg\\.zip$"
+      },
+      "installSteps": [
+        {
+          "action": "download"
+        },
+        {
+          "action": "extract"
+        },
+        {
+          "action": "copy",
+          "from": "{tmp}/Script/PSDToolKit/LipSyncAviUtl1.lua",
+          "to": "{scriptsDir}/PSDToolKit"
+        },
+        {
+          "action": "copy",
+          "from": "{tmp}/Script/PSDToolKit/LipSyncAviUtl1.mod2",
+          "to": "{scriptsDir}/PSDToolKit"
+        },
+        {
+          "action": "copy",
+          "from": "{tmp}/Script/PSDToolKit/LipSyncAviUtl1MtULegacy.lua",
+          "to": "{scriptsDir}/PSDToolKit"
+        },
+        {
+          "action": "copy",
+          "from": "{tmp}/Script/PSDToolKit/AviUtl1LipSyncTools",
+          "to": "{scriptsDir}/PSDToolKit/AviUtl1LipSyncTools"
+        }
+      ],
+      "uninstallSteps": [
+        {
+          "action": "delete",
+          "path": "{scriptsDir}/PSDToolKit/LipSyncAviUtl1.lua"
+        },
+        {
+          "action": "delete",
+          "path": "{scriptsDir}/PSDToolKit/LipSyncAviUtl1.mod2"
+        },
+        {
+          "action": "delete",
+          "path": "{scriptsDir}/PSDToolKit/LipSyncAviUtl1MtULegacy.lua"
+        },
+        {
+          "action": "delete",
+          "path": "{scriptsDir}/PSDToolKit/AviUtl1LipSyncTools"
+        }
+      ]
+    }
+  },
+  "versions": {
+    "versions": [
+      {
+        "version": "v1.8.3",
+        "releaseDate": "2026-08-03",
+        "files": [
+          {
+            "path": "{scriptsDir}/PSDToolKit/LipSyncAviUtl1.mod2",
+            "xxh128": "5df11e182137f9b33a3a40bf04351d45"
+          }
+        ]
+      }
+    ]
+  }
+}

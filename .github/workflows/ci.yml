@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: ['main']
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and test
+        shell: pwsh
+        run: ./Build-LipSyncAviUtl1.ps1
+      - name: Build AviUtl2 package
+        shell: pwsh
+        run: ./New-ReleasePackage.ps1 -SkipBuild
+      - name: Test AviUtl2 package
+        shell: pwsh
+        run: ./Test-ReleasePackage.ps1
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: PSDToolKit-AviUtl1-LipSync
+          path: dist/*.au2pkg.zip

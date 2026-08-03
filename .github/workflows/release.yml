@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and test
+        shell: pwsh
+        run: ./Build-LipSyncAviUtl1.ps1
+      - name: Build AviUtl2 package
+        shell: pwsh
+        run: ./New-ReleasePackage.ps1 -Version $env:GITHUB_REF_NAME -SkipBuild
+      - name: Test AviUtl2 package
+        shell: pwsh
+        run: ./Test-ReleasePackage.ps1
+      - name: Publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $asset = Get-ChildItem -LiteralPath dist -Filter '*.au2pkg.zip' | Select-Object -First 1
+          if ($null -eq $asset) { throw 'Release package was not generated' }
+          gh release view $env:GITHUB_REF_NAME *> $null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release $env:GITHUB_REF_NAME already exists; keeping its verified asset."
+            exit 0
+          }
+          gh release create $env:GITHUB_REF_NAME $asset.FullName --verify-tag --generate-notes --title $env:GITHUB_REF_NAME

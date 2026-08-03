@@ -1,0 +1,47 @@
+# Local investigation material and generated output
+/.test/
+/.tools/
+/baseline/
+/experimental/
+/__pycache__/
+/dist/
+/native/build/
+
+# Private project-analysis utilities
+/Analyze-DialogueMoraCoverage.py
+/Analyze-SyllablePeakDistances.ps1
+/Deploy-LipSyncAviUtl1.ps1
+/LipSyncSyllablePulse.lua
+/New-AviUtl1ReferenceExo.ps1
+/New-AviUtl2ReferenceProject.ps1
+/Open-AviUtl2ProjectForTest.ps1
+/Prototype-SpectralFluxCoverage.py
+/Test-AviUtl1ReferenceTrace.ps1
+/Test-CharacterAliasLipSync.ps1
+/Test-DefinitionConverter.ps1
+/Test-LipSyncAviUtl1.ps1
+/Test-MtULegacyLipSync.ps1
+/Test-ProjectSyllableCoverage.ps1
+!/Test-ReleasePackage.ps1
+
+# AviUtl projects, media, reports, and backups must not enter the repository
+*.aup
+*.aup2
+*.exo
+*.object
+*.wav
+*.mp3
+*.flac
+*.psd
+*.trace.tsv
+*.report.json
+*.bak
+*.tmp
+
+# Editor and OS files
+.vs/
+.vscode/
+*.user
+*.suo
+Thumbs.db
+Desktop.ini
