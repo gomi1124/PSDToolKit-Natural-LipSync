@@ -67,6 +67,10 @@ Visual Studio 2022の「C++によるデスクトップ開発」とWindows SDKが
 
 PSDToolKit2は本リポジトリに含みません。PSDToolKit2本体のライセンスと配布条件は公式リポジトリに従ってください。
 
+## AIの利用について
+
+READMEを含む本リポジトリのコード、文書、配布素材は、AI（OpenAI Codex）を使用して生成・編集されています。
+
 ## 謝辞
 
 - AviUtl / AviUtl2: ＫＥＮくん
