@@ -37,7 +37,7 @@ $expectedEntries = @(
     'Script/PSDToolKit/AviUtl1LipSyncTools/native/THIRD_PARTY_NOTICES.md',
     'Script/PSDToolKit/LipSyncAviUtl1.lua',
     'Script/PSDToolKit/LipSyncAviUtl1.mod2',
-    'Script/PSDToolKit/LipSyncAviUtl1MtULegacy.lua'
+    'Script/PSDToolKit/LipSyncAviUtl1Legacy.lua'
 ) | Sort-Object
 $privateTerms = @(
     ('D:' + '\Users'),

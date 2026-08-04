@@ -57,7 +57,7 @@ $archivePath = Join-Path $OutputDirectory $archiveName
 
 $runtimeFiles = @(
     'LipSyncAviUtl1.lua',
-    'LipSyncAviUtl1MtULegacy.lua'
+    'LipSyncAviUtl1Legacy.lua'
 )
 $toolFiles = @(
     'Convert-PSDToolKitLipSyncDefinition.ps1',

@@ -1,7 +1,7 @@
--- AviUtl1-compatible lip sync for the converted MtU aliases.
+-- Exact AviUtl1-compatible lip sync state detection.
 
-local LipSyncAviUtl1MtULegacy = {}
-LipSyncAviUtl1MtULegacy.__index = LipSyncAviUtl1MtULegacy
+local LipSyncAviUtl1Legacy = {}
+LipSyncAviUtl1Legacy.__index = LipSyncAviUtl1Legacy
 
 local PSDToolKit = require("PSDToolKit")
 
@@ -17,18 +17,18 @@ local pattern_keys = {
 	"開き~ptkl",
 }
 
-local service = PSDToolKit.__aviutl1_mtu_legacy_lipsync_service
+local service = PSDToolKit.__aviutl1_legacy_lipsync_service
 if not service then
 	service = {
 		native_module = nil,
 		native_error = nil,
 	}
-	PSDToolKit.__aviutl1_mtu_legacy_lipsync_service = service
+	PSDToolKit.__aviutl1_legacy_lipsync_service = service
 end
 
 local function validate_patterns(patterns)
 	if #patterns < 2 then
-		error("LipSyncAviUtl1MtULegacy requires at least 2 patterns (closed and open)")
+		error("LipSyncAviUtl1Legacy requires at least 2 patterns (closed and open)")
 	end
 end
 
@@ -88,11 +88,11 @@ local function get_native_state(voice, frame_rate, lipsync)
 	return state
 end
 
-function LipSyncAviUtl1MtULegacy.clear()
+function LipSyncAviUtl1Legacy.clear()
 	service.native_error = nil
 end
 
-function LipSyncAviUtl1MtULegacy.new(opts)
+function LipSyncAviUtl1Legacy.new(opts)
 	if not opts then
 		error("opts cannot be nil")
 	end
@@ -124,10 +124,10 @@ function LipSyncAviUtl1MtULegacy.new(opts)
 		sensitivity = sensitivity,
 		speed = speed,
 		alwaysapply = (tonumber(opts["発声がなくても有効"]) or 0) ~= 0,
-	}, LipSyncAviUtl1MtULegacy)
+	}, LipSyncAviUtl1Legacy)
 end
 
-function LipSyncAviUtl1MtULegacy:getstate(ctx)
+function LipSyncAviUtl1Legacy:getstate(ctx)
 	validate_patterns(self.patterns)
 	local obj = ctx.obj
 	local voice_id
@@ -152,7 +152,7 @@ function LipSyncAviUtl1MtULegacy:getstate(ctx)
 	return self.patterns[state + 1]
 end
 
-function LipSyncAviUtl1MtULegacy.get_diagnostics()
+function LipSyncAviUtl1Legacy.get_diagnostics()
 	local version = nil
 	if service.native_module then
 		local ok, value = pcall(service.native_module.get_version)
@@ -167,4 +167,4 @@ function LipSyncAviUtl1MtULegacy.get_diagnostics()
 	}
 end
 
-return LipSyncAviUtl1MtULegacy
+return LipSyncAviUtl1Legacy

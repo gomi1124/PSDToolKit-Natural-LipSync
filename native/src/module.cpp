@@ -587,7 +587,7 @@ void GetSyllablePulse(SCRIPT_MODULE_PARAM *param)
 
 void GetVersion(SCRIPT_MODULE_PARAM *param)
 {
-    param->push_result_string("1.8.3");
+    param->push_result_string("2.0.0");
 }
 
 SCRIPT_MODULE_FUNCTION kFunctions[] = {
@@ -601,7 +601,7 @@ SCRIPT_MODULE_FUNCTION kFunctions[] = {
 };
 
 SCRIPT_MODULE_TABLE kModuleTable = {
-    L"AviUtl1-compatible PSDToolKit syllable lip-sync analyzer 1.8.3",
+    L"AviUtl1-compatible PSDToolKit syllable lip-sync analyzer 2.0.0",
     kFunctions,
 };
 
