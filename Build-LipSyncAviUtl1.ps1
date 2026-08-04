@@ -64,6 +64,7 @@ $includeArguments = @(
 )
 $sdkVersion = $windowsSdk.Name
 $linkArguments = @(
+    '/Brepro'
     "/LIBPATH:$(Join-Path $msvcTools.FullName 'lib\x64')"
     "/LIBPATH:$(Join-Path $windowsSdkRoot "Lib\$sdkVersion\ucrt\x64")"
     "/LIBPATH:$(Join-Path $windowsSdkRoot "Lib\$sdkVersion\um\x64")"
