@@ -10,7 +10,7 @@ AviUtl2版PSDToolKit2の立ち絵を、AviUtl1版PSDToolKitに近いタイミン
 - 高音域や子音も拾えるスペクトル変化を使い、短すぎる開閉や中間口形状の不自然な全閉じを抑えます。
 - `.anm2` / `.obj2`を複数まとめてドラッグ＆ドロップ変換できます。
 
-本ツールの通常モードは、AviUtl1の解析方式を基礎に発話追従の補正を加えたものです。16-bit PCM WAV向けの厳密な旧状態判定も`LipSyncAviUtl1MtULegacy.lua`として同梱していますが、変換ツールは通常モードを設定します。
+本ツールの通常モードは、AviUtl1の解析方式を基礎に発話追従の補正を加えたものです。16-bit PCM WAV向けの厳密な旧状態判定も`LipSyncAviUtl1Legacy.lua`として同梱していますが、変換ツールは通常モードを設定します。
 
 ## 必要環境
 
@@ -26,10 +26,11 @@ AviUtl2版PSDToolKit2の立ち絵を、AviUtl1版PSDToolKitに近いタイミン
 
 Releasesから`PSDToolKit_AviUtl1LipSync_v*.au2pkg.zip`を取得します。AviUtl2カタログではパッケージファイルとして読み込めます。手動の場合はZIPの`Script`フォルダを`C:\ProgramData\aviutl2`へ展開してください。
 
-インストール後は次の2ファイルが同じ場所に置かれます。
+インストール後は次の3ファイルが同じ場所に置かれます。
 
 ```text
 C:\ProgramData\aviutl2\Script\PSDToolKit\LipSyncAviUtl1.lua
+C:\ProgramData\aviutl2\Script\PSDToolKit\LipSyncAviUtl1Legacy.lua
 C:\ProgramData\aviutl2\Script\PSDToolKit\LipSyncAviUtl1.mod2
 ```
 
@@ -43,6 +44,12 @@ C:\ProgramData\aviutl2\Script\PSDToolKit\LipSyncAviUtl1.mod2
 複数ファイルと複数フォルダを同時にドロップできます。片方だけを指定した場合も、同名の`.anm2` / `.obj2`を対で変換します。元ファイルはその場で更新され、変換前の内容は日時付きフォルダへバックアップされます。
 
 既存エイリアスが変換済みの定義名を参照している場合、エイリアス自体を作り直す必要はありません。AviUtl2の再起動後から新しい口パク処理が使われます。
+
+## 2.0.0の互換性
+
+汎用ツールであることを明確にするため、厳密な旧状態判定モジュールを`LipSyncAviUtl1Legacy.lua`へ改名しました。旧名の`LipSyncAviUtl1MtULegacy.lua`は配布せず、旧名との互換性も提供しません。
+
+旧名を直接`require`している独自定義は、新しいモジュール名へ変更するか、元のPSDToolKit定義から通常モードへ再変換してください。変換ツールが生成した通常モードの定義と、`LipSyncAviUtl1`を参照している既存エイリアスには影響しません。
 
 ## 対応範囲
 

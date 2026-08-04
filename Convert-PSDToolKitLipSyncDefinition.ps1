@@ -27,7 +27,7 @@ $acceptedScripts = @(
     'PSDToolKit.LipSync',
     'PSDToolKit.LipSyncAviUtl1',
     'LipSyncAviUtl1',
-    'LipSyncAviUtl1MtULegacy',
+    'LipSyncAviUtl1Legacy',
     'LipSyncSyllablePulse'
 )
 $metadataPattern = '(?s)--\[==\[PTK:(\{.*?\})\]==\]'
@@ -229,7 +229,7 @@ function Convert-DefinitionRecord {
             'require("LipSyncAviUtl1").new('
         )
         $updatedContent = $updatedContent -replace (
-            'require\("(?:PSDToolKit\.LipSync(?:AviUtl1)?|LipSyncAviUtl1(?:MtULegacy)?|LipSyncSyllablePulse)"\)\.new\('
+            'require\("(?:PSDToolKit\.LipSync(?:AviUtl1)?|LipSyncAviUtl1(?:Legacy)?|LipSyncSyllablePulse)"\)\.new\('
         ), 'require("LipSyncAviUtl1").new('
         $updatedContent = [regex]::Replace(
             $updatedContent,

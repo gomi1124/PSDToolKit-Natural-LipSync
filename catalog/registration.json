@@ -76,7 +76,7 @@
         },
         {
           "action": "copy",
-          "from": "{tmp}/Script/PSDToolKit/LipSyncAviUtl1MtULegacy.lua",
+          "from": "{tmp}/Script/PSDToolKit/LipSyncAviUtl1Legacy.lua",
           "to": "{scriptsDir}/PSDToolKit"
         },
         {
@@ -96,7 +96,7 @@
         },
         {
           "action": "delete",
-          "path": "{scriptsDir}/PSDToolKit/LipSyncAviUtl1MtULegacy.lua"
+          "path": "{scriptsDir}/PSDToolKit/LipSyncAviUtl1Legacy.lua"
         },
         {
           "action": "delete",
@@ -108,12 +108,12 @@
   "versions": {
     "versions": [
       {
-        "version": "v1.8.3",
-        "releaseDate": "2026-08-03",
+        "version": "v2.0.0",
+        "releaseDate": "2026-08-04",
         "files": [
           {
             "path": "{scriptsDir}/PSDToolKit/LipSyncAviUtl1.mod2",
-            "xxh128": "5df11e182137f9b33a3a40bf04351d45"
+            "xxh128": "b108ed75a40de6939839547ec9582460"
           }
         ]
       }
