@@ -601,7 +601,7 @@ SCRIPT_MODULE_FUNCTION kFunctions[] = {
 };
 
 SCRIPT_MODULE_TABLE kModuleTable = {
-    L"AviUtl1-compatible PSDToolKit syllable lip-sync analyzer 2.0.0",
+    L"PSDToolKit Natural LipSync analyzer 2.0.0",
     kFunctions,
 };
 

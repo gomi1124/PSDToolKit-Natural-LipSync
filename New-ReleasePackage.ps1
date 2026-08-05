@@ -48,11 +48,11 @@ if (-not (Test-Path -LiteralPath $nativeModule -PathType Leaf)) {
 }
 
 $stagingDirectory = Join-Path ([IO.Path]::GetTempPath()) (
-    'PSDToolKit_AviUtl1LipSync_' + [guid]::NewGuid().ToString('N')
+    'PSDToolKit_NaturalLipSync_' + [guid]::NewGuid().ToString('N')
 )
 $runtimeDirectory = Join-Path $stagingDirectory 'Script\PSDToolKit'
 $toolsDirectory = Join-Path $runtimeDirectory 'AviUtl1LipSyncTools'
-$archiveName = "PSDToolKit_AviUtl1LipSync_v$packageVersion.au2pkg.zip"
+$archiveName = "PSDToolKit_NaturalLipSync_v$packageVersion.au2pkg.zip"
 $archivePath = Join-Path $OutputDirectory $archiveName
 
 $runtimeFiles = @(

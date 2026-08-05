@@ -22,5 +22,5 @@ jobs:
       - name: Upload package
         uses: actions/upload-artifact@v4
         with:
-          name: PSDToolKit-AviUtl1-LipSync
+          name: PSDToolKit-Natural-LipSync
           path: dist/*.au2pkg.zip

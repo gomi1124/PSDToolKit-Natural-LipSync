@@ -91,7 +91,7 @@ def create_thumbnail() -> None:
     draw.rounded_rectangle((18, 18, 188, 125), radius=8, fill="#203137", outline="#31464B", width=2)
     draw_waveform(draw, (33, 39, 173, 101), color=TEAL, width=4)
     draw_mouth(draw, (103, 83), (66, 26), 0.72, color=CORAL, width=4)
-    draw.text((18, 140), "AviUtl1", font=load_font(24, bold=True), fill=WHITE)
+    draw.text((18, 140), "NATURAL", font=load_font(24, bold=True), fill=WHITE)
     draw.text((18, 171), "LIP SYNC", font=load_font(16, bold=True), fill=YELLOW)
     image.save(IMAGE_DIRECTORY / "thumbnail.png", optimize=True)
 
@@ -102,8 +102,8 @@ def create_detail() -> None:
     draw.rectangle((0, 0, 22, 720), fill=TEAL)
     draw.rounded_rectangle((78, 64, 356, 108), radius=8, fill=INK)
     draw.text((98, 73), "AviUtl2 + PSDToolKit2", font=load_font(21, bold=True), fill=WHITE)
-    draw.text((76, 144), "AviUtl1 LipSync", font=load_font(62, bold=True), fill=INK)
-    draw.text((80, 232), "発音の山を捉えて、立ち絵の口形状へ。", font=load_font(28), fill=MUTED)
+    draw.text((76, 144), "Natural LipSync", font=load_font(62, bold=True), fill=INK)
+    draw.text((80, 232), "声の流れを捉えて、自然な口形状へ。", font=load_font(28), fill=MUTED)
 
     draw.rounded_rectangle((80, 322, 620, 610), radius=8, fill=WHITE, outline="#D8E0DC", width=2)
     draw.text((112, 352), "VOICE", font=load_font(18, bold=True), fill=TEAL)
@@ -123,7 +123,7 @@ def create_detail() -> None:
         draw_mouth(draw, (center_x, 464), (58, 58), state, color=CORAL, width=5)
         draw.text((center_x - 7, 540), str(index + 1), font=load_font(17, bold=True), fill=WHITE)
 
-    draw.text((80, 660), "Native audio analysis  /  Multi-file definition converter", font=load_font(19), fill=MUTED)
+    draw.text((80, 660), "Adaptive audio analysis  /  Japanese reading guidance", font=load_font(19), fill=MUTED)
     image.save(IMAGE_DIRECTORY / "detail.png", optimize=True)
 
 
