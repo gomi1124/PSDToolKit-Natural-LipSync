@@ -6,12 +6,12 @@
     "packageType": "script",
     "packageRole": "primaryPackage",
     "addedAt": "2026-08-03",
-    "packagePageUrl": "https://github.com/gomi1124/PSDToolKit-AviUtl1-LipSync",
+    "packagePageUrl": "https://github.com/gomi1124/PSDToolKit-Natural-LipSync",
     "niconiCommonsId": "nc495271"
   },
   "content": {
     "ja": {
-      "name": "PSDToolKit AviUtl1 LipSync",
+      "name": "PSDToolKit Natural LipSync",
       "author": "ただのごみ",
       "tags": [
         "PSD",
@@ -19,11 +19,11 @@
         "音声"
       ],
       "description": {
-        "summary": "PSDToolKit2でAviUtl1風の口パクを再現",
-        "markdownSource": "https://raw.githubusercontent.com/gomi1124/PSDToolKit-AviUtl1-LipSync/main/README.md"
+        "summary": "音声解析と日本語読みで自然な口パクを生成",
+        "markdownSource": "https://raw.githubusercontent.com/gomi1124/PSDToolKit-Natural-LipSync/main/README.md"
       },
       "changelog": {
-        "markdownSource": "https://raw.githubusercontent.com/gomi1124/PSDToolKit-AviUtl1-LipSync/main/CHANGELOG.md"
+        "markdownSource": "https://raw.githubusercontent.com/gomi1124/PSDToolKit-Natural-LipSync/main/CHANGELOG.md"
       },
       "licenses": [
         {
@@ -37,9 +37,9 @@
         }
       ],
       "images": {
-        "thumbnail": "https://raw.githubusercontent.com/gomi1124/PSDToolKit-AviUtl1-LipSync/main/catalog/images/thumbnail.png",
+        "thumbnail": "https://raw.githubusercontent.com/gomi1124/PSDToolKit-Natural-LipSync/main/catalog/images/thumbnail.png",
         "detailImages": [
-          "https://raw.githubusercontent.com/gomi1124/PSDToolKit-AviUtl1-LipSync/main/catalog/images/detail.png"
+          "https://raw.githubusercontent.com/gomi1124/PSDToolKit-Natural-LipSync/main/catalog/images/detail.png"
         ]
       }
     }
@@ -54,8 +54,8 @@
       "source": {
         "type": "githubRelease",
         "owner": "gomi1124",
-        "repo": "PSDToolKit-AviUtl1-LipSync",
-        "pattern": "^PSDToolKit_AviUtl1LipSync_v.*\\.au2pkg\\.zip$"
+        "repo": "PSDToolKit-Natural-LipSync",
+        "pattern": "^PSDToolKit_NaturalLipSync_v.*\\.au2pkg\\.zip$"
       },
       "installSteps": [
         {
@@ -113,7 +113,7 @@
         "files": [
           {
             "path": "{scriptsDir}/PSDToolKit/LipSyncAviUtl1.mod2",
-            "xxh128": "ad7f3e00b0be5fb7bbb295522d7b4d54"
+            "xxh128": "ba60575cf95facfd25c6ca7b3faaa08e"
           }
         ]
       }

@@ -1,16 +1,16 @@
-# PSDToolKit AviUtl1 LipSync
+# PSDToolKit Natural LipSync
 
-AviUtl2版PSDToolKit2の立ち絵を、AviUtl1版PSDToolKitに近いタイミングで口パクさせるための非公式互換ランタイムです。公式の`PSDToolKit.lua`は変更しません。
+AviUtl2版PSDToolKit2の立ち絵を、音声の強弱・スペクトル変化・日本語読みから自然に口パクさせる非公式ランタイムです。AviUtl1版PSDToolKitの音声解析を土台にしていますが、完全再現ではなく、さまざまな声質や口形状で自然に見える動きを目指しています。公式の`PSDToolKit.lua`は変更しません。
 
 ## 特徴
 
-- AviUtl1版PSDToolKitと同じ256サンプルのHamming窓、Ooura RDFT、音量判定をネイティブモジュールで再現します。
-- 16-bit PCM WAVはAviUtl2のメディアキャッシュを介さず読み取り、AviUtl1と同じ24 kHzへの変換と整数化を行います。
+- 256サンプルのHamming窓、Ooura RDFT、音量判定を基礎に、発音の山と音色の変化をネイティブモジュールで解析します。
+- 16-bit PCM WAVはAviUtl2のメディアキャッシュを介さず読み取り、安定した24 kHzの解析音声へ変換します。
 - 同名の`.txt`が音声の隣にある場合、日本語読みを口パク候補数の上限として利用します。
 - 高音域や子音も拾えるスペクトル変化を使い、短すぎる開閉や中間口形状の不自然な全閉じを抑えます。
 - `.anm2` / `.obj2`を複数まとめてドラッグ＆ドロップ変換できます。
 
-本ツールの通常モードは、AviUtl1の解析方式を基礎に発話追従の補正を加えたものです。16-bit PCM WAV向けの厳密な旧状態判定も`LipSyncAviUtl1Legacy.lua`として同梱していますが、変換ツールは通常モードを設定します。
+本ツールの通常モードは、AviUtl1の解析方式を技術的な出発点として、発話追従、中間口形状、高音域への補正を加えたものです。16-bit PCM WAV向けの厳密な旧状態判定も`LipSyncAviUtl1Legacy.lua`として同梱していますが、変換ツールは自然さを優先する通常モードを設定します。
 
 ## 必要環境
 
@@ -24,7 +24,7 @@ AviUtl2版PSDToolKit2の立ち絵を、AviUtl1版PSDToolKitに近いタイミン
 
 ### AviUtl2カタログまたはパッケージファイル
 
-Releasesから`PSDToolKit_AviUtl1LipSync_v*.au2pkg.zip`を取得します。AviUtl2カタログではパッケージファイルとして読み込めます。手動の場合はZIPの`Script`フォルダを`C:\ProgramData\aviutl2`へ展開してください。
+Releasesから`PSDToolKit_NaturalLipSync_v*.au2pkg.zip`を取得します。AviUtl2カタログではパッケージファイルとして読み込めます。手動の場合はZIPの`Script`フォルダを`C:\ProgramData\aviutl2`へ展開してください。
 
 インストール後は次の3ファイルが同じ場所に置かれます。
 
@@ -51,9 +51,11 @@ C:\ProgramData\aviutl2\Script\PSDToolKit\LipSyncAviUtl1.mod2
 
 旧名を直接`require`している独自定義は、新しいモジュール名へ変更するか、元のPSDToolKit定義から通常モードへ再変換してください。変換ツールが生成した通常モードの定義と、`LipSyncAviUtl1`を参照している既存エイリアスには影響しません。
 
+公開名は2.0.0から`PSDToolKit Natural LipSync`へ変更しました。既存定義と更新導入を維持するため、ランタイムの`LipSyncAviUtl1`というファイル名、カタログID、`AviUtl1LipSyncTools`という導入先フォルダ名は内部互換名として残しています。
+
 ## 対応範囲
 
-16-bit PCM WAVのモノラル、およびステレオのトラック0を主な互換対象としています。圧縮音声や24 kHz未満の音声はAviUtl2のデコーダーを経由するため、AviUtl1との完全一致を保証しません。
+16-bit PCM WAVのモノラル、およびステレオのトラック0を主な高精度解析対象としています。圧縮音声や24 kHz未満の音声はAviUtl2のデコーダーを経由するため、解析結果が異なる場合があります。
 
 口形状はPSDToolKit定義に登録されている順番を使用します。閉じ・開きの2形状だけでも、半開きなどを含む3から5形状でも動作します。
 

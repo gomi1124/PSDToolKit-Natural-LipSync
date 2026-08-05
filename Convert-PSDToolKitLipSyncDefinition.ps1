@@ -375,7 +375,7 @@ if ($BackupBase -eq '') {
 }
 
 $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss_fff'
-$backupRoot = Join-Path $BackupBase "PSDToolKit_AviUtl1LipSync_Definition_$timestamp"
+$backupRoot = Join-Path $BackupBase "PSDToolKit_NaturalLipSync_Definition_$timestamp"
 New-Item -ItemType Directory -Path $backupRoot -Force | Out-Null
 
 $beforeEntries = [Collections.Generic.List[object]]::new()

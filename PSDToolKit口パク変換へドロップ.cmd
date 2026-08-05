@@ -1,7 +1,7 @@
 @echo off
 setlocal
 chcp 65001 >nul
-title PSDToolKit AviUtl1 LipSync Converter
+title PSDToolKit Natural LipSync Converter
 
 if "%~1"=="" (
     echo Drop one or more .anm2/.obj2 files or definition folders onto this launcher.
