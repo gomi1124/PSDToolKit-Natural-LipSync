@@ -4,7 +4,9 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <iterator>
 #include <limits>
+#include <set>
 #include <vector>
 
 extern "C" void rdft(int n, int isgn, float *a, int *ip, float *w);
@@ -20,6 +22,7 @@ constexpr double kSyllableLowCutHz = 80.0;
 constexpr double kSyllableHighCutHz = 6000.0;
 constexpr double kSyllableMinimumPeakIntervalSeconds = 0.10;
 constexpr double kSyllableIntermediateBridgeSeconds = 0.166;
+constexpr double kMaximumOpenMinimumIntervalSeconds = 0.25;
 constexpr double kSyllableActivityThreshold = 0.05;
 constexpr double kSyllableStrengthThreshold = 0.15;
 constexpr double kSyllableLocalDelta = 0.05;
@@ -220,6 +223,47 @@ std::vector<PeakCandidate> SelectUnguidedPeaks(
         if (candidate.score > selected.back().score)
         {
             selected.back() = candidate;
+        }
+    }
+    return selected;
+}
+
+std::vector<PeakCandidate> SelectMaximumOpenPeaks(
+    const std::vector<PeakCandidate> &candidates, int minimum_peak_distance)
+{
+    auto ranked = candidates;
+    std::sort(ranked.begin(), ranked.end(), [](const auto &left, const auto &right) {
+        if (left.score != right.score)
+        {
+            return left.score > right.score;
+        }
+        return left.frame < right.frame;
+    });
+
+    std::set<int> selected_frames;
+    for (const auto &candidate : ranked)
+    {
+        const auto following = selected_frames.lower_bound(candidate.frame);
+        if (following != selected_frames.end() &&
+            *following - candidate.frame < minimum_peak_distance)
+        {
+            continue;
+        }
+        if (following != selected_frames.begin() &&
+            candidate.frame - *std::prev(following) < minimum_peak_distance)
+        {
+            continue;
+        }
+        selected_frames.insert(candidate.frame);
+    }
+
+    std::vector<PeakCandidate> selected;
+    selected.reserve(selected_frames.size());
+    for (const auto &candidate : candidates)
+    {
+        if (selected_frames.find(candidate.frame) != selected_frames.end())
+        {
+            selected.push_back(candidate);
         }
     }
     return selected;
@@ -806,13 +850,31 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
                                                      minimum_peak_distance)
                               : SelectUnguidedPeaks(strong_candidates,
                                                     minimum_peak_distance);
+    std::vector<PeakCandidate> maximum_open_peaks;
+    if (settings_.pattern_count > 2)
+    {
+        const auto minimum_maximum_open_distance = std::max(
+            1, static_cast<int>(std::ceil(
+                   settings_.frame_rate * kMaximumOpenMinimumIntervalSeconds)));
+        maximum_open_peaks =
+            SelectMaximumOpenPeaks(selected, minimum_maximum_open_distance);
+    }
 
     peak_frames_.clear();
     peak_frames_.reserve(selected.size());
     states_.assign(static_cast<std::size_t>(frame_count), 0);
+    std::size_t maximum_open_peak_index = 0;
     for (std::size_t peak_index = 0; peak_index < selected.size(); ++peak_index)
     {
         const auto &peak = selected[peak_index];
+        const auto is_maximum_open_peak =
+            settings_.pattern_count == 2 ||
+            (maximum_open_peak_index < maximum_open_peaks.size() &&
+             maximum_open_peaks[maximum_open_peak_index].frame == peak.frame);
+        if (settings_.pattern_count > 2 && is_maximum_open_peak)
+        {
+            ++maximum_open_peak_index;
+        }
         peak_frames_.push_back(peak.frame);
         const auto desired_first_open_frame =
             peak.frame - static_cast<int>((envelope.size() - 1) / 2);
@@ -836,7 +898,13 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
         {
             const auto envelope_index =
                 static_cast<std::size_t>(frame - desired_first_open_frame);
-            states_[static_cast<std::size_t>(frame)] = envelope[envelope_index];
+            auto envelope_state = envelope[envelope_index];
+            if (!is_maximum_open_peak &&
+                envelope_state == settings_.pattern_count - 1)
+            {
+                envelope_state = envelope.front();
+            }
+            states_[static_cast<std::size_t>(frame)] = envelope_state;
         }
     }
 
