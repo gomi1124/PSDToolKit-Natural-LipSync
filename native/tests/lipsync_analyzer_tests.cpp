@@ -601,9 +601,9 @@ void TestAdaptiveStateClosesAcrossLongPauseWithIntermediateMouth()
 {
     constexpr int sample_rate = 24000;
     constexpr int frame_rate = 60;
-    std::vector<double> amplitudes(36, 0.0);
+    std::vector<double> amplitudes(48, 0.0);
     amplitudes[6] = 0.8;
-    amplitudes[26] = 0.9;
+    amplitudes[36] = 0.9;
     MemoryAudioSource source(
         sample_rate, MakeFrameAmplitudeSine(sample_rate, frame_rate, 750.0, amplitudes));
     aviutl1_lipsync::AdaptivePatternStateSequence adaptive({
@@ -616,7 +616,7 @@ void TestAdaptiveStateClosesAcrossLongPauseWithIntermediateMouth()
         3,
     });
 
-    Require(adaptive.GetState(source, 35) == 0,
+    Require(adaptive.GetState(source, 47) == 0,
             "intermediate-mouth detection must close after speech");
     const auto &peaks = adaptive.GetPeakFrames();
     Require(peaks.size() == 2,
@@ -637,7 +637,7 @@ void TestAdaptiveStateLimitsMaximumOpeningFrequency()
     std::vector<double> amplitudes(44, 0.0);
     amplitudes[6] = 0.8;
     amplitudes[19] = 0.7;
-    amplitudes[35] = 0.9;
+    amplitudes[36] = 0.9;
     MemoryAudioSource source(
         sample_rate, MakeFrameAmplitudeSine(sample_rate, frame_rate, 750.0, amplitudes));
     aviutl1_lipsync::AdaptivePatternStateSequence adaptive({
@@ -672,8 +672,40 @@ void TestAdaptiveStateLimitsMaximumOpeningFrequency()
     }
     Require(maximum_open_frames.size() == 2 && intermediate_peaks == 1,
             "dense peaks must keep one intermediate mouth without removing its pulse");
-    Require(maximum_open_frames[1] - maximum_open_frames[0] >= 18,
-            "60 fps maximum openings must remain at least 300 ms apart");
+    Require(maximum_open_frames[1] - maximum_open_frames[0] >= 30,
+            "60 fps maximum openings must remain at least 500 ms apart");
+}
+
+void TestAdaptiveStateKeepsShortClosedGapIntermediate()
+{
+    constexpr int sample_rate = 24000;
+    constexpr int frame_rate = 60;
+    std::vector<double> amplitudes(36, 0.0);
+    amplitudes[6] = 0.8;
+    amplitudes[25] = 0.9;
+    MemoryAudioSource source(
+        sample_rate, MakeFrameAmplitudeSine(sample_rate, frame_rate, 750.0, amplitudes));
+    aviutl1_lipsync::AdaptivePatternStateSequence adaptive({
+        frame_rate,
+        100.0,
+        1000.0,
+        20.0,
+        1,
+        1.0,
+        5,
+        2,
+    });
+
+    Require(adaptive.GetState(source, 35) == 0,
+            "short-gap test must close after speech");
+    const auto &peaks = adaptive.GetPeakFrames();
+    Require(peaks.size() == 2,
+            "short-gap test must preserve both speech peaks");
+    for (auto frame = peaks[0]; frame <= peaks[1]; ++frame)
+    {
+        Require(adaptive.GetState(source, frame) > 0,
+                "a short internal speech gap must remain at the intermediate mouth");
+    }
 }
 
 void TestAdaptiveStateKeepsTwoPatternMouthOpenLongEnough()
@@ -1077,6 +1109,7 @@ int main()
     TestAdaptiveStateBridgesClosePulsesWithIntermediateMouth();
     TestAdaptiveStateClosesAcrossLongPauseWithIntermediateMouth();
     TestAdaptiveStateLimitsMaximumOpeningFrequency();
+    TestAdaptiveStateKeepsShortClosedGapIntermediate();
     TestAdaptiveStateKeepsTwoPatternMouthOpenLongEnough();
     TestAdaptiveStateHoldsStableIntermediateAndOpenMouths();
     TestAdaptiveStateScalesMouthShapeHoldWithFrameRate();

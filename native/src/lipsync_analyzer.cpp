@@ -22,7 +22,8 @@ constexpr double kSyllableLowCutHz = 80.0;
 constexpr double kSyllableHighCutHz = 6000.0;
 constexpr double kSyllableMinimumPeakIntervalSeconds = 0.10;
 constexpr double kSyllableIntermediateBridgeSeconds = 0.166;
-constexpr double kMaximumOpenMinimumIntervalSeconds = 0.30;
+constexpr double kShortClosedGapMaximumSeconds = 0.25;
+constexpr double kMaximumOpenMinimumIntervalSeconds = 0.50;
 constexpr double kMaximumOpenHoldSeconds = 0.08;
 constexpr double kSyllableActivityThreshold = 0.05;
 constexpr double kSyllableStrengthThreshold = 0.15;
@@ -1040,6 +1041,42 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
             for (auto frame = previous_peak; frame <= current_peak; ++frame)
             {
                 states_[static_cast<std::size_t>(frame)] = open_state;
+            }
+        }
+    }
+
+    if (settings_.pattern_count > 2)
+    {
+        const auto bridge_state = envelope.front();
+        const auto maximum_closed_gap_frames = std::max(
+            1, static_cast<int>(std::floor(
+                   settings_.frame_rate * kShortClosedGapMaximumSeconds)));
+        auto frame = 1;
+        while (frame + 1 < frame_count)
+        {
+            if (states_[static_cast<std::size_t>(frame)] != 0)
+            {
+                ++frame;
+                continue;
+            }
+            const auto first_closed_frame = frame;
+            while (frame < frame_count &&
+                   states_[static_cast<std::size_t>(frame)] == 0)
+            {
+                ++frame;
+            }
+            const auto closed_frame_count = frame - first_closed_frame;
+            if (frame >= frame_count ||
+                closed_frame_count > maximum_closed_gap_frames ||
+                states_[static_cast<std::size_t>(first_closed_frame - 1)] == 0 ||
+                states_[static_cast<std::size_t>(frame)] == 0)
+            {
+                continue;
+            }
+            for (auto closed_frame = first_closed_frame;
+                 closed_frame < frame; ++closed_frame)
+            {
+                states_[static_cast<std::size_t>(closed_frame)] = bridge_state;
             }
         }
     }
