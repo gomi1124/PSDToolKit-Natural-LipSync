@@ -661,7 +661,7 @@ void TestAdaptiveStateKeepsTwoPatternMouthOpenLongEnough()
             "two-pattern syllable pulses must leave one closed frame");
 }
 
-void TestAdaptiveStateUsesEveryConfiguredMouthPattern()
+void TestAdaptiveStateHoldsStableIntermediateAndOpenMouths()
 {
     constexpr int sample_rate = 24000;
     constexpr int frame_rate = 60;
@@ -679,7 +679,7 @@ void TestAdaptiveStateUsesEveryConfiguredMouthPattern()
         1.0,
         4,
     });
-    const std::vector<int> expected_four = {1, 2, 3, 2, 1};
+    const std::vector<int> expected_four = {2, 2, 3, 3, 2, 2};
     Require(four_patterns.GetState(source, 23) == 0,
             "four-pattern syllable detection must close after speech");
     Require(four_patterns.GetPeakFrames().size() == 1,
@@ -690,7 +690,7 @@ void TestAdaptiveStateUsesEveryConfiguredMouthPattern()
         Require(four_patterns.GetState(
                     source, four_peak - 2 + static_cast<int>(offset)) ==
                     expected_four[offset],
-                "four-pattern syllable envelope must open and close through every pattern");
+                "four-pattern syllable envelope must hold stable mouth shapes");
     }
 
     aviutl1_lipsync::AdaptivePatternStateSequence five_patterns({
@@ -702,7 +702,7 @@ void TestAdaptiveStateUsesEveryConfiguredMouthPattern()
         1.0,
         5,
     });
-    const std::vector<int> expected_five = {1, 2, 3, 4, 3, 2, 1};
+    const std::vector<int> expected_five = {2, 2, 4, 4, 2, 2};
     Require(five_patterns.GetState(source, 23) == 0,
             "five-pattern syllable detection must close after speech");
     Require(five_patterns.GetPeakFrames().size() == 1,
@@ -711,10 +711,41 @@ void TestAdaptiveStateUsesEveryConfiguredMouthPattern()
     for (std::size_t offset = 0; offset < expected_five.size(); ++offset)
     {
         Require(five_patterns.GetState(
-                    source, five_peak - 3 + static_cast<int>(offset)) ==
+                    source, five_peak - 2 + static_cast<int>(offset)) ==
                     expected_five[offset],
-                "five-pattern syllable envelope must open and close through every pattern");
+                "five-pattern syllable envelope must hold stable mouth shapes");
     }
+}
+
+void TestAdaptiveStateScalesMouthShapeHoldWithFrameRate()
+{
+    constexpr int sample_rate = 24000;
+    constexpr int frame_rate = 30;
+    std::vector<double> amplitudes(18, 0.0);
+    amplitudes[8] = 0.8;
+    MemoryAudioSource source(
+        sample_rate, MakeFrameAmplitudeSine(sample_rate, frame_rate, 750.0, amplitudes));
+    aviutl1_lipsync::AdaptivePatternStateSequence adaptive({
+        frame_rate,
+        100.0,
+        1000.0,
+        20.0,
+        1,
+        1.0,
+        5,
+    });
+
+    Require(adaptive.GetState(source, 17) == 0,
+            "30 fps syllable detection must close after speech");
+    Require(adaptive.GetPeakFrames().size() == 1,
+            "30 fps syllable detection must find the source pulse");
+    const auto peak = adaptive.GetPeakFrames().front();
+    Require(adaptive.GetState(source, peak - 1) == 2,
+            "30 fps syllable envelope must use the intermediate mouth before the peak");
+    Require(adaptive.GetState(source, peak) == 4,
+            "30 fps syllable envelope must reach the open mouth at the peak");
+    Require(adaptive.GetState(source, peak + 1) == 2,
+            "30 fps syllable envelope must return through the intermediate mouth");
 }
 
 void TestAdaptiveStateSuppressesUnnaturallyRapidPeaks()
@@ -758,7 +789,7 @@ void TestAdaptiveStateSuppressesUnnaturallyRapidPeaks()
             const auto state = adaptive.GetState(source, frame);
             Require(state > 0,
                     "retained rapid syllables must not force a complete closure");
-            has_intermediate_frame = has_intermediate_frame || state == 1;
+            has_intermediate_frame = has_intermediate_frame || state == 2;
         }
         Require(has_intermediate_frame,
                 "retained rapid syllables must use an intermediate bridge");
@@ -958,7 +989,8 @@ int main()
     TestAdaptiveStateBridgesClosePulsesWithIntermediateMouth();
     TestAdaptiveStateClosesAcrossLongPauseWithIntermediateMouth();
     TestAdaptiveStateKeepsTwoPatternMouthOpenLongEnough();
-    TestAdaptiveStateUsesEveryConfiguredMouthPattern();
+    TestAdaptiveStateHoldsStableIntermediateAndOpenMouths();
+    TestAdaptiveStateScalesMouthShapeHoldWithFrameRate();
     TestAdaptiveStateSuppressesUnnaturallyRapidPeaks();
     TestAdaptiveStateIsIndependentOfRequestOrder();
     TestGuidedAdaptiveStateBridgesContinuousSpeechDuringLegacyHold();

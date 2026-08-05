@@ -218,21 +218,27 @@ std::vector<PeakCandidate> SelectUnguidedPeaks(
     return selected;
 }
 
-std::vector<int> BuildSyllableEnvelope(int pattern_count)
+std::vector<int> BuildSyllableEnvelope(int pattern_count, double frame_rate)
 {
-    switch (pattern_count)
+    if (pattern_count == 2)
     {
-    case 2:
         return {1, 1, 1, 1};
-    case 3:
-        return {1, 2, 2, 1};
-    case 4:
-        return {1, 2, 3, 2, 1};
-    case 5:
-        return {1, 2, 3, 4, 3, 2, 1};
-    default:
+    }
+    if (pattern_count < 3 || pattern_count > 5)
+    {
         return {};
     }
+
+    const auto intermediate_state = pattern_count / 2;
+    const auto open_state = pattern_count - 1;
+    const auto hold_frames = std::max(
+        1, static_cast<int>(std::lround(frame_rate / 30.0)));
+    std::vector<int> envelope;
+    envelope.reserve(static_cast<std::size_t>(hold_frames * 3));
+    envelope.insert(envelope.end(), hold_frames, intermediate_state);
+    envelope.insert(envelope.end(), hold_frames, open_state);
+    envelope.insert(envelope.end(), hold_frames, intermediate_state);
+    return envelope;
 }
 
 } // namespace
@@ -737,7 +743,8 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
         }
     }
 
-    const auto envelope = BuildSyllableEnvelope(settings_.pattern_count);
+    const auto envelope =
+        BuildSyllableEnvelope(settings_.pattern_count, settings_.frame_rate);
     if (envelope.empty())
     {
         return false;
@@ -787,6 +794,7 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
 
     if (settings_.pattern_count > 2)
     {
+        const auto bridge_state = envelope.front();
         const auto maximum_bridge_distance = std::max(
             1, static_cast<int>(std::ceil(settings_.frame_rate *
                                           kSyllableIntermediateBridgeSeconds)));
@@ -803,7 +811,7 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
                 auto &state = states_[static_cast<std::size_t>(frame)];
                 if (state == 0)
                 {
-                    state = 1;
+                    state = bridge_state;
                 }
             }
         }
