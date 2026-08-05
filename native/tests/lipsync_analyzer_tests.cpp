@@ -796,6 +796,42 @@ void TestAdaptiveStateSuppressesUnnaturallyRapidPeaks()
     }
 }
 
+void TestAdaptiveStateHoldsContinuousSimilarSoundOpen()
+{
+    constexpr int sample_rate = 24000;
+    constexpr int frame_rate = 60;
+    std::vector<double> amplitudes(24, 0.0);
+    for (int frame = 0; frame <= 17; ++frame)
+    {
+        amplitudes[static_cast<std::size_t>(frame)] = 0.7;
+    }
+    amplitudes[6] = 0.9;
+    amplitudes[13] = 1.0;
+    MemoryAudioSource source(
+        sample_rate, MakeFrameAmplitudeSine(sample_rate, frame_rate, 750.0, amplitudes));
+    aviutl1_lipsync::AdaptivePatternStateSequence adaptive({
+        frame_rate,
+        100.0,
+        1000.0,
+        20.0,
+        1,
+        1.0,
+        5,
+        2,
+    });
+
+    Require(adaptive.GetState(source, 23) == 0,
+            "continuous-sound detection must close after speech");
+    const auto &peaks = adaptive.GetPeakFrames();
+    Require(peaks.size() == 2,
+            "continuous-sound detection must preserve both spectral peaks");
+    for (auto frame = peaks[0]; frame <= peaks[1]; ++frame)
+    {
+        Require(adaptive.GetState(source, frame) == 4,
+                "similar continuous peaks must keep the fully open mouth");
+    }
+}
+
 void TestAdaptiveStateIsIndependentOfRequestOrder()
 {
     constexpr int sample_rate = 24000;
@@ -831,7 +867,7 @@ void TestAdaptiveStateIsIndependentOfRequestOrder()
             "adaptive state replay must remain deterministic after seeking backward");
 }
 
-void TestGuidedAdaptiveStateBridgesContinuousSpeechDuringLegacyHold()
+void TestGuidedAdaptiveStateHoldsSimilarContinuousSpeechOpen()
 {
     constexpr int sample_rate = 24000;
     constexpr int frame_rate = 60;
@@ -852,7 +888,6 @@ void TestGuidedAdaptiveStateBridgesContinuousSpeechDuringLegacyHold()
         3,
         4,
     };
-    aviutl1_lipsync::PatternStateSequence legacy(settings);
     aviutl1_lipsync::AdaptivePatternStateSequence adaptive(settings);
 
     Require(adaptive.GetState(source, 31) >= 0,
@@ -862,18 +897,11 @@ void TestGuidedAdaptiveStateBridgesContinuousSpeechDuringLegacyHold()
             "guided syllable state must retain the requested pulse count");
     for (std::size_t index = 1; index < peaks.size(); ++index)
     {
-        bool has_intermediate_bridge = false;
-        for (auto frame = peaks[index - 1] + 1; frame < peaks[index]; ++frame)
+        for (auto frame = peaks[index - 1]; frame <= peaks[index]; ++frame)
         {
-            Require(adaptive.GetState(source, frame) > 0,
-                    "continuous speech must not close fully between close peaks");
-            has_intermediate_bridge =
-                has_intermediate_bridge ||
-                (adaptive.GetState(source, frame) == 1 &&
-                 legacy.GetState(source, frame) > 0);
+            Require(adaptive.GetState(source, frame) == 2,
+                    "similar continuous speech must hold the fully open mouth");
         }
-        Require(has_intermediate_bridge,
-                "continuous speech must retain an intermediate mouth bridge");
     }
 }
 
@@ -992,8 +1020,9 @@ int main()
     TestAdaptiveStateHoldsStableIntermediateAndOpenMouths();
     TestAdaptiveStateScalesMouthShapeHoldWithFrameRate();
     TestAdaptiveStateSuppressesUnnaturallyRapidPeaks();
+    TestAdaptiveStateHoldsContinuousSimilarSoundOpen();
     TestAdaptiveStateIsIndependentOfRequestOrder();
-    TestGuidedAdaptiveStateBridgesContinuousSpeechDuringLegacyHold();
+    TestGuidedAdaptiveStateHoldsSimilarContinuousSpeechOpen();
     TestAdaptiveStateFallsBackToAviUtl1WithoutSpectralPeaks();
     TestJapaneseSyllableCountMatchesLipSyncUnits();
     TestGuidedSyllableStateUsesTextCountAsUpperBound();

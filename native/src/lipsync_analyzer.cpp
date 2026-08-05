@@ -23,6 +23,13 @@ constexpr double kSyllableIntermediateBridgeSeconds = 0.166;
 constexpr double kSyllableActivityThreshold = 0.05;
 constexpr double kSyllableStrengthThreshold = 0.15;
 constexpr double kSyllableLocalDelta = 0.05;
+constexpr int kSpectralFingerprintBandCount = 5;
+constexpr std::array<double, kSpectralFingerprintBandCount + 1>
+    kSpectralFingerprintBandEdges = {80.0, 500.0, 1000.0, 2000.0, 4000.0,
+                                     6000.0};
+constexpr double kContinuousPeakMaximumIntervalSeconds = 0.14;
+constexpr double kContinuousPeakMinimumValleyRatio = 0.75;
+constexpr double kContinuousPeakMaximumFingerprintDistance = 0.55;
 
 bool IsValidPulseSettings(double frame_rate, double threshold, int peak_radius_frames,
                           int open_frames, int lead_frames)
@@ -239,6 +246,19 @@ std::vector<int> BuildSyllableEnvelope(int pattern_count, double frame_rate)
     envelope.insert(envelope.end(), hold_frames, open_state);
     envelope.insert(envelope.end(), hold_frames, intermediate_state);
     return envelope;
+}
+
+int GetSpectralFingerprintBand(double frequency)
+{
+    for (int band = 0; band < kSpectralFingerprintBandCount; ++band)
+    {
+        if (frequency <
+            kSpectralFingerprintBandEdges[static_cast<std::size_t>(band + 1)])
+        {
+            return band;
+        }
+    }
+    return kSpectralFingerprintBandCount - 1;
 }
 
 } // namespace
@@ -611,8 +631,11 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
         return false;
     }
     const auto frequency_bin_count = last_frequency_bin - first_frequency_bin + 1;
+    std::vector<double> raw_activity(static_cast<std::size_t>(frame_count), 0.0);
     std::vector<double> logarithmic_activity(static_cast<std::size_t>(frame_count), 0.0);
     std::vector<double> raw_novelty(static_cast<std::size_t>(frame_count), 0.0);
+    std::vector<double> spectral_fingerprints(
+        static_cast<std::size_t>(frame_count) * kSpectralFingerprintBandCount, 0.0);
     std::vector<float> previous_spectrum(
         static_cast<std::size_t>(frequency_bin_count), 0.0F);
     std::vector<float> current_spectrum(
@@ -662,10 +685,11 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
             squared_sum += static_cast<double>(windowed) *
                            static_cast<double>(windowed);
         }
+        const auto frame_activity =
+            std::sqrt(squared_sum / static_cast<double>(kSyllableFftSize));
+        raw_activity[static_cast<std::size_t>(frame)] = frame_activity;
         logarithmic_activity[static_cast<std::size_t>(frame)] =
-            std::log1p(1000.0 * std::sqrt(
-                                    squared_sum /
-                                    static_cast<double>(kSyllableFftSize)));
+            std::log1p(1000.0 * frame_activity);
 
         rdft(kSyllableFftSize, 1, fft_buffer.data(), work_int.data(),
              work_float.data());
@@ -676,6 +700,13 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
             const auto imaginary =
                 fft_buffer[static_cast<std::size_t>(bin * 2 + 1)];
             const auto magnitude = std::sqrt(real * real + imaginary * imaginary);
+            const auto frequency =
+                static_cast<double>(bin) * static_cast<double>(info.sample_rate) /
+                static_cast<double>(kSyllableFftSize);
+            const auto fingerprint_band = GetSpectralFingerprintBand(frequency);
+            spectral_fingerprints[
+                static_cast<std::size_t>(frame) * kSpectralFingerprintBandCount +
+                static_cast<std::size_t>(fingerprint_band)] += magnitude;
             const auto spectrum_index =
                 static_cast<std::size_t>(bin - first_frequency_bin);
             current_spectrum[spectrum_index] = std::log1p(magnitude);
@@ -706,6 +737,23 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
             raw_novelty[static_cast<std::size_t>(frame)] =
                 positive_difference_sum /
                 static_cast<double>(frequency_bin_count);
+        }
+        const auto fingerprint_offset =
+            static_cast<std::size_t>(frame) * kSpectralFingerprintBandCount;
+        double fingerprint_sum = 0.0;
+        for (int band = 0; band < kSpectralFingerprintBandCount; ++band)
+        {
+            fingerprint_sum += spectral_fingerprints[
+                fingerprint_offset + static_cast<std::size_t>(band)];
+        }
+        if (fingerprint_sum > 0.0)
+        {
+            for (int band = 0; band < kSpectralFingerprintBandCount; ++band)
+            {
+                spectral_fingerprints[
+                    fingerprint_offset + static_cast<std::size_t>(band)] /=
+                    fingerprint_sum;
+            }
         }
         previous_spectrum.swap(current_spectrum);
     }
@@ -813,6 +861,85 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
                 {
                     state = bridge_state;
                 }
+            }
+        }
+    }
+
+    if (settings_.pattern_count > 2)
+    {
+        const auto maximum_continuous_distance = std::max(
+            1, static_cast<int>(std::floor(
+                   settings_.frame_rate * kContinuousPeakMaximumIntervalSeconds)));
+        const auto get_average_fingerprint = [&](int peak_frame) {
+            std::array<double, kSpectralFingerprintBandCount> average{};
+            const auto last_frame = std::min(frame_count - 1, peak_frame + 2);
+            const auto average_count = last_frame - peak_frame + 1;
+            for (auto frame = peak_frame; frame <= last_frame; ++frame)
+            {
+                const auto offset =
+                    static_cast<std::size_t>(frame) * kSpectralFingerprintBandCount;
+                for (int band = 0; band < kSpectralFingerprintBandCount; ++band)
+                {
+                    average[static_cast<std::size_t>(band)] +=
+                        spectral_fingerprints[
+                            offset + static_cast<std::size_t>(band)];
+                }
+            }
+            for (auto &value : average)
+            {
+                value /= static_cast<double>(average_count);
+            }
+            return average;
+        };
+        for (std::size_t peak_index = 1; peak_index < selected.size(); ++peak_index)
+        {
+            const auto previous_peak = selected[peak_index - 1].frame;
+            const auto current_peak = selected[peak_index].frame;
+            if (current_peak - previous_peak > maximum_continuous_distance)
+            {
+                continue;
+            }
+
+            const auto weaker_peak_activity = std::min(
+                raw_activity[static_cast<std::size_t>(previous_peak)],
+                raw_activity[static_cast<std::size_t>(current_peak)]);
+            if (weaker_peak_activity <= 0.0)
+            {
+                continue;
+            }
+            auto valley_activity = weaker_peak_activity;
+            for (auto frame = previous_peak + 1; frame < current_peak; ++frame)
+            {
+                valley_activity = std::min(
+                    valley_activity,
+                    raw_activity[static_cast<std::size_t>(frame)]);
+            }
+            if (valley_activity / weaker_peak_activity <
+                kContinuousPeakMinimumValleyRatio)
+            {
+                continue;
+            }
+
+            const auto previous_fingerprint =
+                get_average_fingerprint(previous_peak);
+            const auto current_fingerprint = get_average_fingerprint(current_peak);
+            double fingerprint_distance = 0.0;
+            for (int band = 0; band < kSpectralFingerprintBandCount; ++band)
+            {
+                fingerprint_distance += std::abs(
+                    previous_fingerprint[static_cast<std::size_t>(band)] -
+                    current_fingerprint[static_cast<std::size_t>(band)]);
+            }
+            if (fingerprint_distance >
+                kContinuousPeakMaximumFingerprintDistance)
+            {
+                continue;
+            }
+
+            const auto open_state = settings_.pattern_count - 1;
+            for (auto frame = previous_peak; frame <= current_peak; ++frame)
+            {
+                states_[static_cast<std::size_t>(frame)] = open_state;
             }
         }
     }
