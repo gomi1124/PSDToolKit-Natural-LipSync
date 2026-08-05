@@ -22,7 +22,8 @@ constexpr double kSyllableLowCutHz = 80.0;
 constexpr double kSyllableHighCutHz = 6000.0;
 constexpr double kSyllableMinimumPeakIntervalSeconds = 0.10;
 constexpr double kSyllableIntermediateBridgeSeconds = 0.166;
-constexpr double kMaximumOpenMinimumIntervalSeconds = 0.25;
+constexpr double kMaximumOpenMinimumIntervalSeconds = 0.30;
+constexpr double kMaximumOpenHoldSeconds = 0.08;
 constexpr double kSyllableActivityThreshold = 0.05;
 constexpr double kSyllableStrengthThreshold = 0.15;
 constexpr double kSyllableLocalDelta = 0.05;
@@ -928,6 +929,37 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
                 if (state == 0)
                 {
                     state = bridge_state;
+                }
+            }
+        }
+
+        const auto maximum_open_hold_frames = std::max(
+            1, static_cast<int>(std::ceil(
+                   settings_.frame_rate * kMaximumOpenHoldSeconds)));
+        const auto intermediate_hold_frames = std::max(
+            1, static_cast<int>(std::lround(settings_.frame_rate / 30.0)));
+        for (const auto &peak : maximum_open_peaks)
+        {
+            const auto first_maximum_open_frame =
+                peak.frame - (maximum_open_hold_frames - 1) / 2;
+            const auto last_maximum_open_frame =
+                first_maximum_open_frame + maximum_open_hold_frames - 1;
+            const auto first_gesture_frame =
+                first_maximum_open_frame - intermediate_hold_frames;
+            const auto last_gesture_frame =
+                last_maximum_open_frame + intermediate_hold_frames;
+            for (auto frame = std::max(0, first_gesture_frame);
+                 frame <= std::min(frame_count - 1, last_gesture_frame); ++frame)
+            {
+                auto &state = states_[static_cast<std::size_t>(frame)];
+                if (frame >= first_maximum_open_frame &&
+                    frame <= last_maximum_open_frame)
+                {
+                    state = settings_.pattern_count - 1;
+                }
+                else
+                {
+                    state = std::max(state, bridge_state);
                 }
             }
         }

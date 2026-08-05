@@ -593,7 +593,7 @@ void TestAdaptiveStateBridgesClosePulsesWithIntermediateMouth()
         Require(has_intermediate_frame,
                 "close syllable peaks must be joined by the intermediate mouth");
     }
-    Require(maximum_open_peaks == 2 && intermediate_peaks == 1,
+    Require(maximum_open_peaks == 1 && intermediate_peaks == 2,
             "dense speech peaks must reserve maximum opening for spaced accents");
 }
 
@@ -672,8 +672,8 @@ void TestAdaptiveStateLimitsMaximumOpeningFrequency()
     }
     Require(maximum_open_frames.size() == 2 && intermediate_peaks == 1,
             "dense peaks must keep one intermediate mouth without removing its pulse");
-    Require(maximum_open_frames[1] - maximum_open_frames[0] >= 15,
-            "60 fps maximum openings must remain at least 250 ms apart");
+    Require(maximum_open_frames[1] - maximum_open_frames[0] >= 18,
+            "60 fps maximum openings must remain at least 300 ms apart");
 }
 
 void TestAdaptiveStateKeepsTwoPatternMouthOpenLongEnough()
@@ -730,7 +730,7 @@ void TestAdaptiveStateHoldsStableIntermediateAndOpenMouths()
         1.0,
         4,
     });
-    const std::vector<int> expected_four = {2, 2, 3, 3, 2, 2};
+    const std::vector<int> expected_four = {2, 2, 3, 3, 3, 3, 3, 2, 2};
     Require(four_patterns.GetState(source, 23) == 0,
             "four-pattern syllable detection must close after speech");
     Require(four_patterns.GetPeakFrames().size() == 1,
@@ -739,7 +739,7 @@ void TestAdaptiveStateHoldsStableIntermediateAndOpenMouths()
     for (std::size_t offset = 0; offset < expected_four.size(); ++offset)
     {
         Require(four_patterns.GetState(
-                    source, four_peak - 2 + static_cast<int>(offset)) ==
+                    source, four_peak - 4 + static_cast<int>(offset)) ==
                     expected_four[offset],
                 "four-pattern syllable envelope must hold stable mouth shapes");
     }
@@ -753,7 +753,7 @@ void TestAdaptiveStateHoldsStableIntermediateAndOpenMouths()
         1.0,
         5,
     });
-    const std::vector<int> expected_five = {2, 2, 4, 4, 2, 2};
+    const std::vector<int> expected_five = {2, 2, 4, 4, 4, 4, 4, 2, 2};
     Require(five_patterns.GetState(source, 23) == 0,
             "five-pattern syllable detection must close after speech");
     Require(five_patterns.GetPeakFrames().size() == 1,
@@ -762,7 +762,7 @@ void TestAdaptiveStateHoldsStableIntermediateAndOpenMouths()
     for (std::size_t offset = 0; offset < expected_five.size(); ++offset)
     {
         Require(five_patterns.GetState(
-                    source, five_peak - 2 + static_cast<int>(offset)) ==
+                    source, five_peak - 4 + static_cast<int>(offset)) ==
                     expected_five[offset],
                 "five-pattern syllable envelope must hold stable mouth shapes");
     }
@@ -791,11 +791,15 @@ void TestAdaptiveStateScalesMouthShapeHoldWithFrameRate()
     Require(adaptive.GetPeakFrames().size() == 1,
             "30 fps syllable detection must find the source pulse");
     const auto peak = adaptive.GetPeakFrames().front();
-    Require(adaptive.GetState(source, peak - 1) == 2,
-            "30 fps syllable envelope must use the intermediate mouth before the peak");
+    Require(adaptive.GetState(source, peak - 2) == 2,
+            "30 fps syllable envelope must use the intermediate mouth before opening");
+    Require(adaptive.GetState(source, peak - 1) == 4,
+            "30 fps syllable envelope must open before the peak");
     Require(adaptive.GetState(source, peak) == 4,
             "30 fps syllable envelope must reach the open mouth at the peak");
-    Require(adaptive.GetState(source, peak + 1) == 2,
+    Require(adaptive.GetState(source, peak + 1) == 4,
+            "30 fps syllable envelope must hold the open mouth after the peak");
+    Require(adaptive.GetState(source, peak + 2) == 2,
             "30 fps syllable envelope must return through the intermediate mouth");
 }
 
