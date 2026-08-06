@@ -4,7 +4,9 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <iterator>
 #include <limits>
+#include <set>
 #include <vector>
 
 extern "C" void rdft(int n, int isgn, float *a, int *ip, float *w);
@@ -20,9 +22,19 @@ constexpr double kSyllableLowCutHz = 80.0;
 constexpr double kSyllableHighCutHz = 6000.0;
 constexpr double kSyllableMinimumPeakIntervalSeconds = 0.10;
 constexpr double kSyllableIntermediateBridgeSeconds = 0.166;
+constexpr double kClosedFlickerMaximumSeconds = 0.09;
+constexpr double kMaximumOpenMinimumIntervalSeconds = 0.50;
+constexpr double kMaximumOpenHoldSeconds = 0.08;
 constexpr double kSyllableActivityThreshold = 0.05;
 constexpr double kSyllableStrengthThreshold = 0.15;
 constexpr double kSyllableLocalDelta = 0.05;
+constexpr int kSpectralFingerprintBandCount = 5;
+constexpr std::array<double, kSpectralFingerprintBandCount + 1>
+    kSpectralFingerprintBandEdges = {80.0, 500.0, 1000.0, 2000.0, 4000.0,
+                                     6000.0};
+constexpr double kContinuousPeakMaximumIntervalSeconds = 0.14;
+constexpr double kContinuousPeakMinimumValleyRatio = 0.75;
+constexpr double kContinuousPeakMaximumFingerprintDistance = 0.55;
 
 bool IsValidPulseSettings(double frame_rate, double threshold, int peak_radius_frames,
                           int open_frames, int lead_frames)
@@ -218,21 +230,81 @@ std::vector<PeakCandidate> SelectUnguidedPeaks(
     return selected;
 }
 
-std::vector<int> BuildSyllableEnvelope(int pattern_count)
+std::vector<PeakCandidate> SelectMaximumOpenPeaks(
+    const std::vector<PeakCandidate> &candidates, int minimum_peak_distance)
 {
-    switch (pattern_count)
+    auto ranked = candidates;
+    std::sort(ranked.begin(), ranked.end(), [](const auto &left, const auto &right) {
+        if (left.score != right.score)
+        {
+            return left.score > right.score;
+        }
+        return left.frame < right.frame;
+    });
+
+    std::set<int> selected_frames;
+    for (const auto &candidate : ranked)
     {
-    case 2:
+        const auto following = selected_frames.lower_bound(candidate.frame);
+        if (following != selected_frames.end() &&
+            *following - candidate.frame < minimum_peak_distance)
+        {
+            continue;
+        }
+        if (following != selected_frames.begin() &&
+            candidate.frame - *std::prev(following) < minimum_peak_distance)
+        {
+            continue;
+        }
+        selected_frames.insert(candidate.frame);
+    }
+
+    std::vector<PeakCandidate> selected;
+    selected.reserve(selected_frames.size());
+    for (const auto &candidate : candidates)
+    {
+        if (selected_frames.find(candidate.frame) != selected_frames.end())
+        {
+            selected.push_back(candidate);
+        }
+    }
+    return selected;
+}
+
+std::vector<int> BuildSyllableEnvelope(int pattern_count, double frame_rate)
+{
+    if (pattern_count == 2)
+    {
         return {1, 1, 1, 1};
-    case 3:
-        return {1, 2, 2, 1};
-    case 4:
-        return {1, 2, 3, 2, 1};
-    case 5:
-        return {1, 2, 3, 4, 3, 2, 1};
-    default:
+    }
+    if (pattern_count < 3 || pattern_count > 5)
+    {
         return {};
     }
+
+    const auto intermediate_state = pattern_count / 2;
+    const auto open_state = pattern_count - 1;
+    const auto hold_frames = std::max(
+        1, static_cast<int>(std::lround(frame_rate / 30.0)));
+    std::vector<int> envelope;
+    envelope.reserve(static_cast<std::size_t>(hold_frames * 3));
+    envelope.insert(envelope.end(), hold_frames, intermediate_state);
+    envelope.insert(envelope.end(), hold_frames, open_state);
+    envelope.insert(envelope.end(), hold_frames, intermediate_state);
+    return envelope;
+}
+
+int GetSpectralFingerprintBand(double frequency)
+{
+    for (int band = 0; band < kSpectralFingerprintBandCount; ++band)
+    {
+        if (frequency <
+            kSpectralFingerprintBandEdges[static_cast<std::size_t>(band + 1)])
+        {
+            return band;
+        }
+    }
+    return kSpectralFingerprintBandCount - 1;
 }
 
 } // namespace
@@ -605,8 +677,11 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
         return false;
     }
     const auto frequency_bin_count = last_frequency_bin - first_frequency_bin + 1;
+    std::vector<double> raw_activity(static_cast<std::size_t>(frame_count), 0.0);
     std::vector<double> logarithmic_activity(static_cast<std::size_t>(frame_count), 0.0);
     std::vector<double> raw_novelty(static_cast<std::size_t>(frame_count), 0.0);
+    std::vector<double> spectral_fingerprints(
+        static_cast<std::size_t>(frame_count) * kSpectralFingerprintBandCount, 0.0);
     std::vector<float> previous_spectrum(
         static_cast<std::size_t>(frequency_bin_count), 0.0F);
     std::vector<float> current_spectrum(
@@ -656,10 +731,11 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
             squared_sum += static_cast<double>(windowed) *
                            static_cast<double>(windowed);
         }
+        const auto frame_activity =
+            std::sqrt(squared_sum / static_cast<double>(kSyllableFftSize));
+        raw_activity[static_cast<std::size_t>(frame)] = frame_activity;
         logarithmic_activity[static_cast<std::size_t>(frame)] =
-            std::log1p(1000.0 * std::sqrt(
-                                    squared_sum /
-                                    static_cast<double>(kSyllableFftSize)));
+            std::log1p(1000.0 * frame_activity);
 
         rdft(kSyllableFftSize, 1, fft_buffer.data(), work_int.data(),
              work_float.data());
@@ -670,6 +746,13 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
             const auto imaginary =
                 fft_buffer[static_cast<std::size_t>(bin * 2 + 1)];
             const auto magnitude = std::sqrt(real * real + imaginary * imaginary);
+            const auto frequency =
+                static_cast<double>(bin) * static_cast<double>(info.sample_rate) /
+                static_cast<double>(kSyllableFftSize);
+            const auto fingerprint_band = GetSpectralFingerprintBand(frequency);
+            spectral_fingerprints[
+                static_cast<std::size_t>(frame) * kSpectralFingerprintBandCount +
+                static_cast<std::size_t>(fingerprint_band)] += magnitude;
             const auto spectrum_index =
                 static_cast<std::size_t>(bin - first_frequency_bin);
             current_spectrum[spectrum_index] = std::log1p(magnitude);
@@ -700,6 +783,23 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
             raw_novelty[static_cast<std::size_t>(frame)] =
                 positive_difference_sum /
                 static_cast<double>(frequency_bin_count);
+        }
+        const auto fingerprint_offset =
+            static_cast<std::size_t>(frame) * kSpectralFingerprintBandCount;
+        double fingerprint_sum = 0.0;
+        for (int band = 0; band < kSpectralFingerprintBandCount; ++band)
+        {
+            fingerprint_sum += spectral_fingerprints[
+                fingerprint_offset + static_cast<std::size_t>(band)];
+        }
+        if (fingerprint_sum > 0.0)
+        {
+            for (int band = 0; band < kSpectralFingerprintBandCount; ++band)
+            {
+                spectral_fingerprints[
+                    fingerprint_offset + static_cast<std::size_t>(band)] /=
+                    fingerprint_sum;
+            }
         }
         previous_spectrum.swap(current_spectrum);
     }
@@ -737,7 +837,8 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
         }
     }
 
-    const auto envelope = BuildSyllableEnvelope(settings_.pattern_count);
+    const auto envelope =
+        BuildSyllableEnvelope(settings_.pattern_count, settings_.frame_rate);
     if (envelope.empty())
     {
         return false;
@@ -751,13 +852,31 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
                                                      minimum_peak_distance)
                               : SelectUnguidedPeaks(strong_candidates,
                                                     minimum_peak_distance);
+    std::vector<PeakCandidate> maximum_open_peaks;
+    if (settings_.pattern_count > 2)
+    {
+        const auto minimum_maximum_open_distance = std::max(
+            1, static_cast<int>(std::ceil(
+                   settings_.frame_rate * kMaximumOpenMinimumIntervalSeconds)));
+        maximum_open_peaks =
+            SelectMaximumOpenPeaks(selected, minimum_maximum_open_distance);
+    }
 
     peak_frames_.clear();
     peak_frames_.reserve(selected.size());
     states_.assign(static_cast<std::size_t>(frame_count), 0);
+    std::size_t maximum_open_peak_index = 0;
     for (std::size_t peak_index = 0; peak_index < selected.size(); ++peak_index)
     {
         const auto &peak = selected[peak_index];
+        const auto is_maximum_open_peak =
+            settings_.pattern_count == 2 ||
+            (maximum_open_peak_index < maximum_open_peaks.size() &&
+             maximum_open_peaks[maximum_open_peak_index].frame == peak.frame);
+        if (settings_.pattern_count > 2 && is_maximum_open_peak)
+        {
+            ++maximum_open_peak_index;
+        }
         peak_frames_.push_back(peak.frame);
         const auto desired_first_open_frame =
             peak.frame - static_cast<int>((envelope.size() - 1) / 2);
@@ -781,12 +900,19 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
         {
             const auto envelope_index =
                 static_cast<std::size_t>(frame - desired_first_open_frame);
-            states_[static_cast<std::size_t>(frame)] = envelope[envelope_index];
+            auto envelope_state = envelope[envelope_index];
+            if (!is_maximum_open_peak &&
+                envelope_state == settings_.pattern_count - 1)
+            {
+                envelope_state = envelope.front();
+            }
+            states_[static_cast<std::size_t>(frame)] = envelope_state;
         }
     }
 
     if (settings_.pattern_count > 2)
     {
+        const auto bridge_state = envelope.front();
         const auto maximum_bridge_distance = std::max(
             1, static_cast<int>(std::ceil(settings_.frame_rate *
                                           kSyllableIntermediateBridgeSeconds)));
@@ -803,8 +929,153 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
                 auto &state = states_[static_cast<std::size_t>(frame)];
                 if (state == 0)
                 {
-                    state = 1;
+                    state = bridge_state;
                 }
+            }
+        }
+
+        const auto maximum_open_hold_frames = std::max(
+            1, static_cast<int>(std::ceil(
+                   settings_.frame_rate * kMaximumOpenHoldSeconds)));
+        const auto intermediate_hold_frames = std::max(
+            1, static_cast<int>(std::lround(settings_.frame_rate / 30.0)));
+        for (const auto &peak : maximum_open_peaks)
+        {
+            const auto first_maximum_open_frame =
+                peak.frame - (maximum_open_hold_frames - 1) / 2;
+            const auto last_maximum_open_frame =
+                first_maximum_open_frame + maximum_open_hold_frames - 1;
+            const auto first_gesture_frame =
+                first_maximum_open_frame - intermediate_hold_frames;
+            const auto last_gesture_frame =
+                last_maximum_open_frame + intermediate_hold_frames;
+            for (auto frame = std::max(0, first_gesture_frame);
+                 frame <= std::min(frame_count - 1, last_gesture_frame); ++frame)
+            {
+                auto &state = states_[static_cast<std::size_t>(frame)];
+                if (frame >= first_maximum_open_frame &&
+                    frame <= last_maximum_open_frame)
+                {
+                    state = settings_.pattern_count - 1;
+                }
+                else
+                {
+                    state = std::max(state, bridge_state);
+                }
+            }
+        }
+    }
+
+    if (settings_.pattern_count > 2)
+    {
+        const auto maximum_continuous_distance = std::max(
+            1, static_cast<int>(std::floor(
+                   settings_.frame_rate * kContinuousPeakMaximumIntervalSeconds)));
+        const auto get_average_fingerprint = [&](int peak_frame) {
+            std::array<double, kSpectralFingerprintBandCount> average{};
+            const auto last_frame = std::min(frame_count - 1, peak_frame + 2);
+            const auto average_count = last_frame - peak_frame + 1;
+            for (auto frame = peak_frame; frame <= last_frame; ++frame)
+            {
+                const auto offset =
+                    static_cast<std::size_t>(frame) * kSpectralFingerprintBandCount;
+                for (int band = 0; band < kSpectralFingerprintBandCount; ++band)
+                {
+                    average[static_cast<std::size_t>(band)] +=
+                        spectral_fingerprints[
+                            offset + static_cast<std::size_t>(band)];
+                }
+            }
+            for (auto &value : average)
+            {
+                value /= static_cast<double>(average_count);
+            }
+            return average;
+        };
+        for (std::size_t peak_index = 1; peak_index < selected.size(); ++peak_index)
+        {
+            const auto previous_peak = selected[peak_index - 1].frame;
+            const auto current_peak = selected[peak_index].frame;
+            if (current_peak - previous_peak > maximum_continuous_distance)
+            {
+                continue;
+            }
+
+            const auto weaker_peak_activity = std::min(
+                raw_activity[static_cast<std::size_t>(previous_peak)],
+                raw_activity[static_cast<std::size_t>(current_peak)]);
+            if (weaker_peak_activity <= 0.0)
+            {
+                continue;
+            }
+            auto valley_activity = weaker_peak_activity;
+            for (auto frame = previous_peak + 1; frame < current_peak; ++frame)
+            {
+                valley_activity = std::min(
+                    valley_activity,
+                    raw_activity[static_cast<std::size_t>(frame)]);
+            }
+            if (valley_activity / weaker_peak_activity <
+                kContinuousPeakMinimumValleyRatio)
+            {
+                continue;
+            }
+
+            const auto previous_fingerprint =
+                get_average_fingerprint(previous_peak);
+            const auto current_fingerprint = get_average_fingerprint(current_peak);
+            double fingerprint_distance = 0.0;
+            for (int band = 0; band < kSpectralFingerprintBandCount; ++band)
+            {
+                fingerprint_distance += std::abs(
+                    previous_fingerprint[static_cast<std::size_t>(band)] -
+                    current_fingerprint[static_cast<std::size_t>(band)]);
+            }
+            if (fingerprint_distance >
+                kContinuousPeakMaximumFingerprintDistance)
+            {
+                continue;
+            }
+
+            const auto open_state = settings_.pattern_count - 1;
+            for (auto frame = previous_peak; frame <= current_peak; ++frame)
+            {
+                states_[static_cast<std::size_t>(frame)] = open_state;
+            }
+        }
+    }
+
+    if (settings_.pattern_count > 2)
+    {
+        const auto bridge_state = envelope.front();
+        const auto maximum_flicker_frames = std::max(
+            1, static_cast<int>(std::floor(
+                   settings_.frame_rate * kClosedFlickerMaximumSeconds)));
+        auto frame = 1;
+        while (frame + 1 < frame_count)
+        {
+            if (states_[static_cast<std::size_t>(frame)] != 0)
+            {
+                ++frame;
+                continue;
+            }
+            const auto first_closed_frame = frame;
+            while (frame < frame_count &&
+                   states_[static_cast<std::size_t>(frame)] == 0)
+            {
+                ++frame;
+            }
+            const auto closed_frame_count = frame - first_closed_frame;
+            if (frame >= frame_count ||
+                closed_frame_count > maximum_flicker_frames ||
+                states_[static_cast<std::size_t>(first_closed_frame - 1)] == 0)
+            {
+                continue;
+            }
+            for (auto closed_frame = first_closed_frame;
+                 closed_frame < frame; ++closed_frame)
+            {
+                states_[static_cast<std::size_t>(closed_frame)] = bridge_state;
             }
         }
     }
