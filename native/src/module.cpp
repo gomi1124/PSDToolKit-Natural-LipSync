@@ -587,7 +587,7 @@ void GetSyllablePulse(SCRIPT_MODULE_PARAM *param)
 
 void GetVersion(SCRIPT_MODULE_PARAM *param)
 {
-    param->push_result_string("2.0.0");
+    param->push_result_string("2.0.1");
 }
 
 SCRIPT_MODULE_FUNCTION kFunctions[] = {
@@ -601,7 +601,7 @@ SCRIPT_MODULE_FUNCTION kFunctions[] = {
 };
 
 SCRIPT_MODULE_TABLE kModuleTable = {
-    L"PSDToolKit Natural LipSync analyzer 2.0.0",
+    L"PSDToolKit Natural LipSync analyzer 2.0.1",
     kFunctions,
 };
 

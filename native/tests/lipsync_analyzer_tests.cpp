@@ -461,6 +461,35 @@ void TestPatternStateSequencePreservesFractionalSpeed()
     }
 }
 
+void TestPatternStateSequenceUsesIntermediateMouthOnlyForTransitions()
+{
+    constexpr int sample_rate = 24000;
+    constexpr int frame_rate = 60;
+    std::vector<double> amplitudes(10, 0.0);
+    for (int frame = 0; frame < 5; ++frame)
+    {
+        amplitudes[static_cast<std::size_t>(frame)] = 0.6;
+    }
+    MemoryAudioSource source(
+        sample_rate, MakeFrameAmplitudeSine(sample_rate, frame_rate, 750.0, amplitudes));
+    aviutl1_lipsync::PatternStateSequence sequence({
+        frame_rate,
+        100.0,
+        1000.0,
+        20.0,
+        1,
+        1.0,
+        3,
+    });
+
+    const std::vector<int> expected = {0, 1, 2, 2, 2, 1, 0, 0, 0, 0};
+    for (int frame = 0; frame < static_cast<int>(expected.size()); ++frame)
+    {
+        Require(sequence.GetState(source, frame) == expected[static_cast<std::size_t>(frame)],
+                "the intermediate mouth must be a one-frame opening or closing transition");
+    }
+}
+
 void TestPatternStateSequenceIsIndependentOfRequestOrder()
 {
     constexpr int sample_rate = 24000;
@@ -1140,6 +1169,7 @@ int main()
     TestInvalidBandIsRejected();
     TestPatternStateSequenceMatchesAviUtl1Transitions();
     TestPatternStateSequencePreservesFractionalSpeed();
+    TestPatternStateSequenceUsesIntermediateMouthOnlyForTransitions();
     TestPatternStateSequenceIsIndependentOfRequestOrder();
     TestAdaptiveStateDetectsHighFrequencySpeechPulses();
     TestAdaptiveStateBridgesClosePulsesWithIntermediateMouth();

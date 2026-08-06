@@ -123,7 +123,7 @@ def create_detail() -> None:
         draw_mouth(draw, (center_x, 464), (58, 58), state, color=CORAL, width=5)
         draw.text((center_x - 7, 540), str(index + 1), font=load_font(17, bold=True), fill=WHITE)
 
-    draw.text((80, 660), "Adaptive audio analysis  /  Japanese reading guidance", font=load_font(19), fill=MUTED)
+    draw.text((80, 660), "Volume-driven  /  One-step mouth transitions", font=load_font(19), fill=MUTED)
     image.save(IMAGE_DIRECTORY / "detail.png", optimize=True)
 
 

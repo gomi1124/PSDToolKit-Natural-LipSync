@@ -19,7 +19,7 @@
         "音声"
       ],
       "description": {
-        "summary": "音声解析と日本語読みで自然な口パクを生成",
+        "summary": "音声の強弱に合わせて自然な口形状を生成",
         "markdownSource": "https://raw.githubusercontent.com/gomi1124/PSDToolKit-Natural-LipSync/main/README.md"
       },
       "changelog": {
@@ -107,6 +107,16 @@
   },
   "versions": {
     "versions": [
+      {
+        "version": "v2.0.1",
+        "releaseDate": "2026-08-06",
+        "files": [
+          {
+            "path": "{scriptsDir}/PSDToolKit/LipSyncAviUtl1.mod2",
+            "xxh128": "7314ce50aaa686ad40446c0b8068cb39"
+          }
+        ]
+      },
       {
         "version": "v2.0.0",
         "releaseDate": "2026-08-04",

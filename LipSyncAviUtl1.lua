@@ -1,4 +1,4 @@
--- Syllable lip sync using native spectral onsets and Japanese reading guidance.
+-- Natural lip sync using volume-driven mouth-shape transitions.
 
 local LipSyncAviUtl1 = {}
 LipSyncAviUtl1.__index = LipSyncAviUtl1
@@ -32,6 +32,19 @@ local function validate_patterns(patterns)
 	end
 end
 
+local function compact_patterns(patterns)
+	local compacted = {}
+	for _, value in ipairs(patterns) do
+		if compacted[#compacted] ~= value then
+			table.insert(compacted, value)
+		end
+	end
+	if #compacted < 2 then
+		return patterns
+	end
+	return compacted
+end
+
 local function get_native_module()
 	if service.native_module then
 		return service.native_module
@@ -51,10 +64,10 @@ end
 
 local function get_native_state(voice, frame_rate, lipsync)
 	local native = get_native_module()
-	local get_state = native.get_syllable_state
+	local get_state = native.get_state
 	if not get_state then
-		service.native_error = "native.get_syllable_state is unavailable"
-		error("LipSyncAviUtl1.mod2 does not provide syllable state detection")
+		service.native_error = "native.get_state is unavailable"
+		error("LipSyncAviUtl1.mod2 does not provide natural state detection")
 	end
 	local ok, state = pcall(
 		get_state,
@@ -70,18 +83,18 @@ local function get_native_state(voice, frame_rate, lipsync)
 	)
 	if not ok then
 		service.native_error = tostring(state)
-		error("LipSyncAviUtl1 syllable state detection failed: " .. tostring(state))
+		error("LipSyncAviUtl1 natural state detection failed: " .. tostring(state))
 	end
 
 	state = tonumber(state)
 	if not state then
 		service.native_error = "native module returned a non-numeric state"
-		error("LipSyncAviUtl1 syllable state detection returned an invalid value")
+		error("LipSyncAviUtl1 natural state detection returned an invalid value")
 	end
 	state = math.floor(state)
 	if state < 0 or state >= #lipsync.patterns then
 		service.native_error = "native module returned an out-of-range state"
-		error("LipSyncAviUtl1 syllable state detection returned an out-of-range value")
+		error("LipSyncAviUtl1 natural state detection returned an out-of-range value")
 	end
 
 	service.native_error = nil
@@ -104,6 +117,7 @@ function LipSyncAviUtl1.new(opts)
 			table.insert(patterns, value)
 		end
 	end
+	patterns = compact_patterns(patterns)
 	validate_patterns(patterns)
 
 	local sensitivity = math.floor(tonumber(opts["感度"]) or 1)
@@ -161,7 +175,7 @@ function LipSyncAviUtl1.get_diagnostics()
 		end
 	end
 	return {
-		backend = "LipSyncAviUtl1.mod2 guided spectral syllable detection",
+		backend = "LipSyncAviUtl1.mod2 volume-driven natural mouth transitions",
 		native_version = version,
 		native_error = service.native_error,
 	}
