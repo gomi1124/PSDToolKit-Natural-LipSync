@@ -22,7 +22,7 @@ constexpr double kSyllableLowCutHz = 80.0;
 constexpr double kSyllableHighCutHz = 6000.0;
 constexpr double kSyllableMinimumPeakIntervalSeconds = 0.10;
 constexpr double kSyllableIntermediateBridgeSeconds = 0.166;
-constexpr double kShortClosedGapMaximumSeconds = 0.25;
+constexpr double kClosedFlickerMaximumSeconds = 0.09;
 constexpr double kMaximumOpenMinimumIntervalSeconds = 0.50;
 constexpr double kMaximumOpenHoldSeconds = 0.08;
 constexpr double kSyllableActivityThreshold = 0.05;
@@ -1048,9 +1048,9 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
     if (settings_.pattern_count > 2)
     {
         const auto bridge_state = envelope.front();
-        const auto maximum_closed_gap_frames = std::max(
+        const auto maximum_flicker_frames = std::max(
             1, static_cast<int>(std::floor(
-                   settings_.frame_rate * kShortClosedGapMaximumSeconds)));
+                   settings_.frame_rate * kClosedFlickerMaximumSeconds)));
         auto frame = 1;
         while (frame + 1 < frame_count)
         {
@@ -1067,9 +1067,8 @@ bool AdaptivePatternStateSequence::BuildStates(const AudioSource &source)
             }
             const auto closed_frame_count = frame - first_closed_frame;
             if (frame >= frame_count ||
-                closed_frame_count > maximum_closed_gap_frames ||
-                states_[static_cast<std::size_t>(first_closed_frame - 1)] == 0 ||
-                states_[static_cast<std::size_t>(frame)] == 0)
+                closed_frame_count > maximum_flicker_frames ||
+                states_[static_cast<std::size_t>(first_closed_frame - 1)] == 0)
             {
                 continue;
             }

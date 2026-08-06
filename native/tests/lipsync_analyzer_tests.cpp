@@ -601,9 +601,9 @@ void TestAdaptiveStateClosesAcrossLongPauseWithIntermediateMouth()
 {
     constexpr int sample_rate = 24000;
     constexpr int frame_rate = 60;
-    std::vector<double> amplitudes(48, 0.0);
+    std::vector<double> amplitudes(36, 0.0);
     amplitudes[6] = 0.8;
-    amplitudes[36] = 0.9;
+    amplitudes[26] = 0.9;
     MemoryAudioSource source(
         sample_rate, MakeFrameAmplitudeSine(sample_rate, frame_rate, 750.0, amplitudes));
     aviutl1_lipsync::AdaptivePatternStateSequence adaptive({
@@ -616,7 +616,7 @@ void TestAdaptiveStateClosesAcrossLongPauseWithIntermediateMouth()
         3,
     });
 
-    Require(adaptive.GetState(source, 47) == 0,
+    Require(adaptive.GetState(source, 35) == 0,
             "intermediate-mouth detection must close after speech");
     const auto &peaks = adaptive.GetPeakFrames();
     Require(peaks.size() == 2,
@@ -676,13 +676,13 @@ void TestAdaptiveStateLimitsMaximumOpeningFrequency()
             "60 fps maximum openings must remain at least 500 ms apart");
 }
 
-void TestAdaptiveStateKeepsShortClosedGapIntermediate()
+void TestAdaptiveStateBridgesOnlyClosedFlicker()
 {
     constexpr int sample_rate = 24000;
     constexpr int frame_rate = 60;
-    std::vector<double> amplitudes(36, 0.0);
+    std::vector<double> amplitudes(28, 0.0);
     amplitudes[6] = 0.8;
-    amplitudes[25] = 0.9;
+    amplitudes[17] = 0.9;
     MemoryAudioSource source(
         sample_rate, MakeFrameAmplitudeSine(sample_rate, frame_rate, 750.0, amplitudes));
     aviutl1_lipsync::AdaptivePatternStateSequence adaptive({
@@ -696,16 +696,52 @@ void TestAdaptiveStateKeepsShortClosedGapIntermediate()
         2,
     });
 
-    Require(adaptive.GetState(source, 35) == 0,
-            "short-gap test must close after speech");
+    Require(adaptive.GetState(source, 27) == 0,
+            "closed-flicker test must close after speech");
+    Require(adaptive.GetState(source, 0) == 0,
+            "closed-flicker test must remain closed before speech");
     const auto &peaks = adaptive.GetPeakFrames();
     Require(peaks.size() == 2,
-            "short-gap test must preserve both speech peaks");
+            "closed-flicker test must preserve both speech peaks");
     for (auto frame = peaks[0]; frame <= peaks[1]; ++frame)
     {
         Require(adaptive.GetState(source, frame) > 0,
-                "a short internal speech gap must remain at the intermediate mouth");
+                "a sub-90 ms closed flicker must remain at the intermediate mouth");
     }
+}
+
+void TestAdaptiveStateKeepsBriefPauseClosed()
+{
+    constexpr int sample_rate = 24000;
+    constexpr int frame_rate = 60;
+    std::vector<double> amplitudes(31, 0.0);
+    amplitudes[6] = 0.8;
+    amplitudes[20] = 0.9;
+    MemoryAudioSource source(
+        sample_rate, MakeFrameAmplitudeSine(sample_rate, frame_rate, 750.0, amplitudes));
+    aviutl1_lipsync::AdaptivePatternStateSequence adaptive({
+        frame_rate,
+        100.0,
+        1000.0,
+        20.0,
+        1,
+        1.0,
+        5,
+        2,
+    });
+
+    Require(adaptive.GetState(source, 30) == 0,
+            "brief-pause test must close after speech");
+    const auto &peaks = adaptive.GetPeakFrames();
+    Require(peaks.size() == 2,
+            "brief-pause test must preserve both speech peaks");
+    auto has_closed_frame = false;
+    for (auto frame = peaks[0] + 1; frame < peaks[1]; ++frame)
+    {
+        has_closed_frame = has_closed_frame || adaptive.GetState(source, frame) == 0;
+    }
+    Require(has_closed_frame,
+            "a 100 ms speech pause must return to the closed mouth");
 }
 
 void TestAdaptiveStateKeepsTwoPatternMouthOpenLongEnough()
@@ -1109,7 +1145,8 @@ int main()
     TestAdaptiveStateBridgesClosePulsesWithIntermediateMouth();
     TestAdaptiveStateClosesAcrossLongPauseWithIntermediateMouth();
     TestAdaptiveStateLimitsMaximumOpeningFrequency();
-    TestAdaptiveStateKeepsShortClosedGapIntermediate();
+    TestAdaptiveStateBridgesOnlyClosedFlicker();
+    TestAdaptiveStateKeepsBriefPauseClosed();
     TestAdaptiveStateKeepsTwoPatternMouthOpenLongEnough();
     TestAdaptiveStateHoldsStableIntermediateAndOpenMouths();
     TestAdaptiveStateScalesMouthShapeHoldWithFrameRate();
